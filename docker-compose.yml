@@ -1,0 +1,43 @@
+# docker-compose.yml
+
+version: "3.7"
+
+services:
+
+    websocket_listener:
+      command: sh -c "python main.py"
+      container_name: websocket_listener
+      depends_on:
+        - clickhousedb
+      hostname: websocket_listener
+      build:
+        context: websocket_listener
+        dockerfile: Dockerfile
+      networks:
+        - main
+      ports:
+        - "5000:5000"
+      restart: always
+
+    clickhousedb:
+      image: yandex/clickhouse-server
+      container_name: clickhousedb
+      hostname: clickhousedb
+      env_file:
+        - websocket_listener/.env.binance
+      ports:
+        - "8123:8123"
+        - "9000:9000"
+      volumes:
+        - clickhousedb:/var/lib/clickhouse
+      networks:
+        - main
+      restart: always
+
+networks:
+  main:
+    driver: bridge
+
+volumes:
+  clickhousedb:
+
