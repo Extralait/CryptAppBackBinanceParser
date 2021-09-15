@@ -1,10 +1,10 @@
 import asyncio
 import copy
 import json
+import clickhouse_driver
+
 from datetime import datetime
 from decimal import Decimal
-
-import clickhouse_driver
 from binance import AsyncClient, BinanceSocketManager
 from bottle import run, post, request
 from pytz import timezone
@@ -66,7 +66,7 @@ class BinanceParser:
 
         print(self.actual_crypto_pairs)
 
-    def _handle_socket_message(self, trades: json):
+    def __handle_socket_message(self, trades: json):
         """Парсит информацию о сделках"""
         agg_trades = self.agg_trades
         trades_data = trades['data']
@@ -142,5 +142,5 @@ class BinanceParser:
                         self.wait_updating = False
                         break
                     else:
-                        self._handle_socket_message(res)
+                        self.__handle_socket_message(res)
             await binance_client.close_connection()

@@ -51,7 +51,6 @@ WORKDIR $APP_HOME
 RUN apt-get update && apt-get install -y libpq-dev bash netcat
 COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
-#COPY wait-for /bin/wait-for
 
 RUN pip install --no-cache /wheels/*
 

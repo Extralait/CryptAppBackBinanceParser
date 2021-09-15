@@ -5,7 +5,7 @@ version: "3.7"
 services:
 
     websocket_listener:
-      command: sh -c "python main.py"
+      command: sh -c "wait-for clickhousedb:9000&&python main.py"
       container_name: websocket_listener
       depends_on:
         - clickhousedb
@@ -17,6 +17,8 @@ services:
         - main
       ports:
         - "5000:5000"
+      volumes:
+        - ./wait-for:/bin/wait-for
       restart: always
 
     clickhousedb:
