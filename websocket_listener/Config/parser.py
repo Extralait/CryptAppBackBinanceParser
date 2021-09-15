@@ -1,6 +1,8 @@
 import asyncio
 import copy
 import json
+import threading
+
 import clickhouse_driver
 
 from datetime import datetime
@@ -38,7 +40,8 @@ class BinanceParser:
             """Обновляет список валютных пар пост запросом"""
             self.update_coins(json.loads(request.forms.get('coins')))
             self.reload = True
-        asyncio.run(self.__async__main())
+
+        asyncio.get_event_loop().run_until_complete(self.__async__main())
 
     @staticmethod
     def _crypto_pairs_validate(new_crypto_pairs: list, old_crypto_pairs: list, use_valid_values: bool = False) -> list:
@@ -70,6 +73,7 @@ class BinanceParser:
         """Парсит информацию о сделках"""
         agg_trades = self.agg_trades
         trades_data = trades['data']
+        # print(trades_data)
         agg_trades.append({
             'coin_pair_name': trades_data['s'],
             'take_time': datetime.fromtimestamp(trades_data['T'] / 1000, tz=timezone('Europe/Moscow')),
@@ -84,27 +88,30 @@ class BinanceParser:
         reset_event = asyncio.Event()
         loop.create_task(self.__async__monitor(reset_event))
         loop.create_task(self.__async__wright_trades())
-        loop.create_task(self.__async__server())
+        # loop.create_task(self.__async__run_server())
         while True:
-            print('run stream')
-            workers = [loop.create_task(self.__async__take_streams())]
+            workers = []
+            workers.append(loop.create_task(self.__async__take_streams()))
+            # workers.append(loop.create_task(self.__async__run_server()))
             await reset_event.wait()
             reset_event.clear()
             for t in workers:
                 t.cancel()
 
-    @staticmethod
-    async def __async__server():
-        """Запускает HTTP сервер"""
-        print('run server')
-        await run(host='localhost', port=8080, debug=True)
+    # @staticmethod
+    # async def __async__run_server():
+    #     """Запускает HTTP сервер"""
+    #     print('run server')
+    #     run(host='localhost', port=8080, debug=True)
 
     async def __async__monitor(self,reset_event):
         """Отслеживает прекращение стрима с binance"""
+        await asyncio.sleep(5)
         while True:
             first_check = self.agg_trades
             await asyncio.sleep(1)
             second_check = self.agg_trades
+            print(first_check+second_check)
             if self.reload or (not (first_check+second_check)):
                 self.reload = False
                 print('reset!')
@@ -117,6 +124,7 @@ class BinanceParser:
             await asyncio.sleep(60)
             using_agg_trades = copy.deepcopy(self.agg_trades)
             self.agg_trades = []
+
             self.clickhouse_client.execute(
                 f'INSERT INTO {CLICKHOUSE_TRAD_TABLE_NAME} VALUES',
                 using_agg_trades
@@ -124,6 +132,7 @@ class BinanceParser:
 
     async def __async__take_streams(self):
         """Подписывается на websocket стримы сделок по валютным парам"""
+        print('run stream')
         binance_client = await AsyncClient.create()
         socket_manager = BinanceSocketManager(binance_client)
 

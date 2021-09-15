@@ -1,3 +1,5 @@
+import threading
+
 from clickhouse_driver import Client
 
 from Config.parser import BinanceParser
@@ -16,7 +18,6 @@ def main():
         ") Engine = Memory"
     )
     BinanceParser(client)
-
 
 if __name__ == '__main__':
     main()
