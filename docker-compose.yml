@@ -15,8 +15,6 @@ services:
         dockerfile: Dockerfile
       networks:
         - main
-      ports:
-        - "5000:5000"
       volumes:
         - ./wait-for:/bin/wait-for
       restart: always
