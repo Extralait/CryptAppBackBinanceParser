@@ -3,7 +3,6 @@
 version: "3.7"
 
 services:
-
     websocket_listener:
       command: sh -c "wait-for clickhousedb:9000&&python main.py"
       container_name: websocket_listener
