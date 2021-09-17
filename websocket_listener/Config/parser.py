@@ -67,7 +67,6 @@ class BinanceParser:
         if prev_crypto_pairs == self.actual_crypto_pairs:
             self.wait_updating = True
 
-        print(self.actual_crypto_pairs)
 
     def __handle_socket_message(self, trades: json):
         """Парсит информацию о сделках"""
@@ -111,7 +110,6 @@ class BinanceParser:
             first_check = self.agg_trades
             await asyncio.sleep(1)
             second_check = self.agg_trades
-            print(first_check+second_check)
             if self.reload or (not (first_check+second_check)):
                 self.reload = False
                 print('reset!')
