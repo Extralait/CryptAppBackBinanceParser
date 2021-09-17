@@ -19,14 +19,14 @@ RUN apt-get update \
 
 # lint
 RUN pip install --upgrade pip
-COPY .. .
+COPY . .
 
 # install dependencies
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
 # copy project
-COPY .. .
+COPY . .
 
 #########
 # FINAL #
@@ -55,7 +55,7 @@ COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache /wheels/*
 
 # copy project
-COPY .. $APP_HOME
+COPY . $APP_HOME
 
 # chown all the files to the app user
 RUN chown -R app:app $APP_HOME
