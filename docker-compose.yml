@@ -13,7 +13,7 @@ services:
         context: websocket_listener
         dockerfile: Dockerfile
       networks:
-        - main
+        - cryptappbackbinance_main
       volumes:
         - ./wait-for:/bin/wait-for
       restart: always
@@ -30,12 +30,14 @@ services:
       volumes:
         - clickhousedb:/var/lib/clickhouse
       networks:
-        - main
+        - cryptappbackbinance_main
       restart: always
 
 networks:
   main:
+    name: main
     driver: bridge
+    external: true
 
 volumes:
   clickhousedb:
