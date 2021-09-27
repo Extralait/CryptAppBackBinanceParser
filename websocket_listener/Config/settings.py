@@ -35,7 +35,6 @@ dictConfig({
     }
 })
 
-CLICKHOUSE_TRAD_TABLE_NAME = os.getenv('CLICKHOUSE_TRAD_TABLE_NAME')
 
 SERVER_HOST = os.getenv('SERVER_HOST')
 

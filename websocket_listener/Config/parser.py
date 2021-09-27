@@ -11,8 +11,6 @@ from binance import AsyncClient, BinanceSocketManager
 from bottle import run, post, request
 from pytz import timezone
 
-from .settings import CLICKHOUSE_TRAD_TABLE_NAME
-
 
 class BinanceParser:
 
@@ -75,7 +73,7 @@ class BinanceParser:
         # print(trades_data)
         agg_trades.append({
             'coin_pair_name': trades_data['s'],
-            'take_time': datetime.fromtimestamp(trades_data['T'] / 1000, tz=timezone('Europe/Moscow')),
+            'take_time': datetime. fromtimestamp(trades_data['T'] / 1000, tz=timezone('Europe/Moscow')),
             'volume': Decimal(str(trades_data['q'])),
             'price': Decimal(str(trades_data['p']))
         })
@@ -124,7 +122,7 @@ class BinanceParser:
             self.agg_trades = []
 
             self.clickhouse_client.execute(
-                f'INSERT INTO {CLICKHOUSE_TRAD_TABLE_NAME} VALUES',
+                f'INSERT INTO trades VALUES',
                 using_agg_trades
             )
 
