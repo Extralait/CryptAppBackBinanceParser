@@ -111,7 +111,7 @@ class BinanceParser:
             if self.reload or (not (first_check+second_check)):
                 self.reload = False
                 print('reset!')
-                self.binance_client.close_connection()
+                await self.binance_client.close_connection()
                 reset_event.set()
             await asyncio.sleep(1)
 
@@ -149,4 +149,4 @@ class BinanceParser:
                         break
                     else:
                         self.__handle_socket_message(res)
-            await binance_client.close_connection()
+            await self.binance_client.close_connection()
