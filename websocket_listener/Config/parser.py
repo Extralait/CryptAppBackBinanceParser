@@ -106,11 +106,12 @@ class BinanceParser:
         await asyncio.sleep(5)
         while True:
             first_check = self.agg_trades
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             second_check = self.agg_trades
             if self.reload or (not (first_check+second_check)):
                 self.reload = False
                 print('reset!')
+                self.binance_client.close_connection()
                 reset_event.set()
             await asyncio.sleep(1)
 
@@ -129,8 +130,8 @@ class BinanceParser:
     async def __async__take_streams(self):
         """Подписывается на websocket стримы сделок по валютным парам"""
         print('run stream')
-        binance_client = await AsyncClient.create()
-        socket_manager = BinanceSocketManager(binance_client)
+        self.binance_client = await AsyncClient.create()
+        socket_manager = BinanceSocketManager(self.binance_client)
 
         while True:
             streams = []
