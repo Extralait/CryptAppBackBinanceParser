@@ -1,14 +1,12 @@
 import asyncio
 import copy
 import json
-import threading
 
 import clickhouse_driver
 
 from datetime import datetime
 from decimal import Decimal
 from binance import AsyncClient, BinanceSocketManager
-from bottle import run, post, request
 from pytz import timezone
 
 
@@ -32,12 +30,6 @@ class BinanceParser:
         self.wait_updating = False
         self.clickhouse_client = clickhouse_client
         self.reload = False
-
-        @post('/update_coins')
-        def update_coins_route():
-            """Обновляет список валютных пар пост запросом"""
-            self.update_coins(json.loads(request.forms.get('coins')))
-            self.reload = True
 
         asyncio.get_event_loop().run_until_complete(self.__async__main())
 
@@ -65,15 +57,13 @@ class BinanceParser:
         if prev_crypto_pairs == self.actual_crypto_pairs:
             self.wait_updating = True
 
-
     def __handle_socket_message(self, trades: json):
         """Парсит информацию о сделках"""
         agg_trades = self.agg_trades
         trades_data = trades['data']
-        # print(trades_data)
         agg_trades.append({
             'coin_pair_name': trades_data['s'],
-            'take_time': datetime. fromtimestamp(trades_data['T'] / 1000, tz=timezone('Europe/Moscow')),
+            'take_time': datetime.fromtimestamp(trades_data['T'] / 1000, tz=timezone('Europe/Moscow')),
             'volume': Decimal(str(trades_data['q'])),
             'price': Decimal(str(trades_data['p']))
         })
@@ -85,30 +75,22 @@ class BinanceParser:
         reset_event = asyncio.Event()
         loop.create_task(self.__async__monitor(reset_event))
         loop.create_task(self.__async__wright_trades())
-        # loop.create_task(self.__async__run_server())
         while True:
             workers = []
             workers.append(loop.create_task(self.__async__take_streams()))
-            # workers.append(loop.create_task(self.__async__run_server()))
             await reset_event.wait()
             reset_event.clear()
             for t in workers:
                 t.cancel()
 
-    # @staticmethod
-    # async def __async__run_server():
-    #     """Запускает HTTP сервер"""
-    #     print('run server')
-    #     run(host='localhost', port=8080, debug=True)
-
-    async def __async__monitor(self,reset_event):
+    async def __async__monitor(self, reset_event):
         """Отслеживает прекращение стрима с binance"""
         await asyncio.sleep(5)
         while True:
             first_check = self.agg_trades
             await asyncio.sleep(2)
             second_check = self.agg_trades
-            if self.reload or (not (first_check+second_check)):
+            if self.reload or (not (first_check + second_check)):
                 self.reload = False
                 print('reset!')
                 await self.binance_client.close_connection()
