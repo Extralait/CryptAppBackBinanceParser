@@ -1,5 +1,3 @@
-import threading
-
 from clickhouse_driver import Client
 
 from Config.parser import BinanceParser
@@ -15,18 +13,9 @@ def main():
             "volume Decimal(20,7), "
             "price Decimal(20,7),"
             "take_time DateTime"
-        ") Engine = Memory"
-    )
-    client.execute(
-        f"CREATE TABLE IF NOT EXISTS indicators "
-        "("
-            "coin_pair_name String, "
-            "indicator_name String, "
-            "indicator_kline_type String, "
-            "indicator_type String, "
-            "values_data Array(Decimal(20,7)), "
-            "take_time Array(DateTime)"
-        ") Engine = Memory"
+        ") Engine = MergeTree()"
+        "ORDER BY (take_time, coin_pair_name)"
+        "TTL take_time + INTERVAL 1000 YEAR"
     )
     client.execute(
         f"CREATE TABLE IF NOT EXISTS klines "
@@ -44,7 +33,22 @@ def main():
             "volume Decimal(20,7),"
             "kline_type String,"
             "take_time DateTime"
-        ") Engine = Memory"
+        ") Engine = MergeTree()"
+        "ORDER BY (take_time, coin_pair_name)"
+        "TTL take_time + INTERVAL 1000 YEAR"
+    )
+    client.execute(
+        f"CREATE TABLE IF NOT EXISTS indicators "
+        "("
+            "coin_pair_name String, "
+            "indicator_name String, "
+            "indicator_kline_type String, "
+            "indicator_type String, "
+            "values_data Array(Decimal(20,7)), "
+            "take_time Array(DateTime)"
+        ") Engine = MergeTree()"
+        "ORDER BY (take_time[1], coin_pair_name)"
+        "TTL take_time[1] + INTERVAL 1000 YEAR"
     )
     BinanceParser(client)
 
