@@ -12,10 +12,9 @@ def main():
             "coin_pair_name String, "
             "volume Decimal(20,7), "
             "price Decimal(20,7),"
-            "take_time DateTime"
+            "take_time DateTime64(3, 'Europe/Moscow')"
         ") Engine = MergeTree()"
         "ORDER BY (take_time, coin_pair_name)"
-        "TTL take_time + INTERVAL 1000 YEAR"
     )
     client.execute(
         f"CREATE TABLE IF NOT EXISTS klines "
@@ -32,10 +31,9 @@ def main():
             "low Decimal(20,7),"
             "volume Decimal(20,7),"
             "kline_type String,"
-            "take_time DateTime"
+            "take_time DateTime64(3, 'Europe/Moscow')"
         ") Engine = MergeTree()"
         "ORDER BY (take_time, coin_pair_name)"
-        "TTL take_time + INTERVAL 1000 YEAR"
     )
     client.execute(
         f"CREATE TABLE IF NOT EXISTS indicators "
@@ -45,10 +43,9 @@ def main():
             "indicator_kline_type String, "
             "indicator_type String, "
             "values_data Array(Decimal(20,7)), "
-            "take_time Array(DateTime)"
+            "take_time Array(DateTime64(3, 'Europe/Moscow'))"
         ") Engine = MergeTree()"
         "ORDER BY (take_time[1], coin_pair_name)"
-        "TTL take_time[1] + INTERVAL 1000 YEAR"
     )
     BinanceParser(client)
 
