@@ -1,13 +1,16 @@
 import asyncio
 import copy
 import json
+import traceback
+import logging
 
 import clickhouse_driver
 
 from datetime import datetime
 from decimal import Decimal
-from binance import AsyncClient, BinanceSocketManager
 from pytz import timezone
+
+from binance import AsyncClient, BinanceSocketManager
 
 
 class BinanceParser:
@@ -70,65 +73,92 @@ class BinanceParser:
 
     async def __async__main(self):
         """Запускает цикл получения сделок на binance"""
-        print('run main')
-        loop = asyncio.get_event_loop()
-        reset_event = asyncio.Event()
-        loop.create_task(self.__async__monitor(reset_event))
-        loop.create_task(self.__async__wright_trades())
         while True:
-            workers = []
-            workers.append(loop.create_task(self.__async__take_streams()))
-            await reset_event.wait()
-            reset_event.clear()
-            for t in workers:
-                t.cancel()
+            logging.info(f"[Main coroutine] - Start main coroutine")
+            try:
+                loop = asyncio.get_event_loop()
+                reset_event = asyncio.Event()
+                loop.create_task(self.__async__monitor(reset_event))
+                loop.create_task(self.__async__write_trades())
+                while True:
+                    logging.info(f"[Main coroutine] - Adding all workers")
+                    workers = []
+                    workers.append(loop.create_task(self.__async__take_streams()))
+                    await reset_event.wait()
+                    logging.info(f"[Main coroutine] - Restarting all workers")
+                    reset_event.clear()
+                    for t in workers:
+                        t.cancel()
+            except Exception:
+                logging.error(f"[Main coroutine] - Fatal error")
+                logging.error(f"[Main coroutine] - {traceback.print_exc()}")
+
 
     async def __async__monitor(self, reset_event):
         """Отслеживает прекращение стрима с binance"""
         await asyncio.sleep(5)
+        logging.info(f"[Monitor coroutine] - Start monitor coroutine")
         while True:
-            first_check = self.agg_trades
-            await asyncio.sleep(2)
-            second_check = self.agg_trades
-            if self.reload or (not (first_check + second_check)):
-                self.reload = False
-                print('reset!')
-                await self.binance_client.close_connection()
-                reset_event.set()
-            await asyncio.sleep(1)
+            try:
+                logging.info(f"[Monitor coroutine] - Check data in agg_trades {len(self.agg_trades)}")
+                first_check = self.agg_trades
+                await asyncio.sleep(2)
+                second_check = self.agg_trades
+                if self.reload or (not (first_check + second_check)):
+                    logging.error(f"[Monitor coroutine] - No data in agg_trades, restarting")
+                    self.reload = False
+                    logging.info(f"[Monitor coroutine] - Close binance connection")
+                    await self.binance_client.close_connection()
+                    reset_event.set()
+                await asyncio.sleep(1)
+            except Exception:
+                logging.error(f"[Monitor coroutine] - Fatal error")
+                logging.error(f"[Monitor coroutine] - {traceback.print_exc()}")
 
-    async def __async__wright_trades(self):
+    async def __async__write_trades(self):
         """Записывает информацию о сделках в базу данных"""
         while True:
-            await asyncio.sleep(60)
-            using_agg_trades = copy.deepcopy(self.agg_trades)
-            self.agg_trades = []
-
-            self.clickhouse_client.execute(
-                f'INSERT INTO trades VALUES',
-                using_agg_trades
-            )
+            logging.info(f"[Trade writer coroutine] - Start trade writer coroutine")
+            try:
+                await asyncio.sleep(60)
+                using_agg_trades = copy.deepcopy(self.agg_trades)
+                self.agg_trades = []
+    
+                self.clickhouse_client.execute(
+                    f'INSERT INTO trades VALUES',
+                    using_agg_trades
+                )
+            except Exception:
+                logging.error(f"[Trade writer coroutine] - Fatal error")
+                logging.error(f"[Trade writer coroutine] - {traceback.print_exc()}")
 
     async def __async__take_streams(self):
         """Подписывается на websocket стримы сделок по валютным парам"""
-        print('run stream')
+        logging.info(f"[Stream coroutine] - Start stream coroutine")
+        logging.info(f"[Stream coroutine] - Connection to binance")
         self.binance_client = await AsyncClient.create()
         socket_manager = BinanceSocketManager(self.binance_client)
 
         while True:
-            streams = []
-            for currency in self.actual_crypto_pairs:
-                currency = currency.lower()
-                streams.append(f'{currency}@aggTrade')
-            ts = socket_manager.multiplex_socket(streams=streams)
-            async with ts as tscm:
-                while True:
-                    res = await tscm.recv()
-                    if res.get('e') == 'error':
-                        break
-                    elif self.wait_updating:
-                        self.wait_updating = False
-                        break
-                    else:
-                        self.__handle_socket_message(res)
-            await self.binance_client.close_connection()
+            try:
+                streams = []
+                for currency in self.actual_crypto_pairs:
+                    currency = currency.lower()
+                    streams.append(f'{currency}@aggTrade')
+                logging.info(f"[Stream coroutine] - Create streams")
+                ts = socket_manager.multiplex_socket(streams=streams)
+                async with ts as tscm:
+                    while True:
+                        res = await tscm.recv()
+                        if res.get('e') == 'error':
+                            break
+                        elif self.wait_updating:
+                            self.wait_updating = False
+                            break
+                        else:
+                            self.__handle_socket_message(res)
+                logging.info(f"[Stream coroutine] - Close binance connection")
+                await self.binance_client.close_connection()
+            except Exception:
+                logging.error(f"[Stream coroutine] - Fatal error")
+                logging.error(f"[Stream coroutine] - {traceback.print_exc()}")

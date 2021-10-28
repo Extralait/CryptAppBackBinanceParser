@@ -1,3 +1,6 @@
+import logging
+from datetime import datetime
+
 from clickhouse_driver import Client
 
 from Config.parser import BinanceParser
@@ -47,6 +50,7 @@ def main():
         ") Engine = MergeTree()"
         "ORDER BY (take_time[1], coin_pair_name)"
     )
+    logging.info(f"[App] {datetime.now().isoformat()} - Start parser")
     BinanceParser(client)
 
 if __name__ == '__main__':
